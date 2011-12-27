@@ -6,12 +6,12 @@ hash mysqldump 2>&- || { echo >&2 "The mysqldump utility is required but is eith
 # Check that user supplied a conf file
 if [!$1]; then
   	cat <<HEREDOC
+MySQL CleanDump v0.9
 	Usage:
-		Specify which enivornment you're in.  Environment credentials must be added to the file ahead of time.
+		Specify a configuration file for the environment you are in as an arguement.
 
-	Environments:
-		local - Localhost database.
-		test - Testing database on remote server.
+	Example:
+		cleandump.sh ./env.local.conf
 HEREDOC
   	exit;
 fi
