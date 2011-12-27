@@ -7,7 +7,7 @@ hash sed 2>&- || { echo >&2 "The sed utility is required but is either not insta
 # Check that user supplied a conf file
 if [ ! $1 ]; then
   	cat <<HEREDOC
-MySQL CleanDump v0.9
+MySQL CleanDump v1.0.0
 	Usage:
 		Specify a configuration file for the environment you are in as an arguement.
 
