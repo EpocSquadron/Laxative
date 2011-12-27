@@ -61,7 +61,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 ## Save db to schema.sql
 # 	$DB >schema.sql
 
-mysqldump --host=$HOST --port=$PORT --user=$USER --password=$PASS --add-drop-table --skip-comments --create-options --default-character-set=utf8 --no-data $DB >$DIR/schema.sql
+mysqldump --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" --add-drop-table --skip-comments --create-options --default-character-set=utf8 --no-data "$DB" >"$DIR"/schema.sql
 
 # # Create a dump of the actual data
 # mysqldump \
@@ -91,5 +91,5 @@ mysqldump --host=$HOST --port=$PORT --user=$USER --password=$PASS --add-drop-tab
 # >data.sql
 
 # Create a dump of the actual data
-mysqldump --host=$HOST --port=$PORT --user=$USER --password=$PASS --complete-insert --skip-comments --disable-keys --extended-insert --no-create-db --no-create-info --quick $DB | sed 's/),(/),\
-(/g' >$DIR/$ENV-data.sql
+mysqldump --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" --complete-insert --skip-comments --disable-keys --extended-insert --no-create-db --no-create-info --quick "$DB" | sed 's/),(/),\
+(/g' >"$DIR"/"$ENV"-data.sql
