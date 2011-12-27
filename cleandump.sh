@@ -3,25 +3,8 @@
 # Check for existence of mysqldump
 hash mysqldump 2>&- || { echo >&2 "The mysqldump utility is required but is either not installed or not in your PATH.  Aborting."; exit 1; }
 
-# Settings for db connection
-case "$1" in
-  "local" )
-	HOST=
-	PORT=
-	USER=
-	PASS=""
-	DB=
-	ENV="local"
-  ;;
-  "test" )
-  	HOST=
-	PORT=
-	USER=
-	PASS=""
-	DB=
-	ENV="test"
-  ;;
-  * )
+# Check that user supplied a conf file
+if [!$1]; then
   	cat <<HEREDOC
 	Usage:
 		Specify which enivornment you're in.  Environment credentials must be added to the file ahead of time.
@@ -31,10 +14,24 @@ case "$1" in
 		test - Testing database on remote server.
 HEREDOC
   	exit;
-  ;;
-esac
+fi
 
-# Let's find out where the script is
+# Set defaults
+ENV="local"
+HOST="localhost"
+PORT="3000"
+USER="root"
+PASS="root"
+DB="test"
+
+# Check if conf exists, then load
+if [-e $1]; then
+	source $1
+else
+	echo >&2 "Configuration file does not exist."; exit 1;
+fi
+
+# Find location of this script so we can save output to correct directory
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # # Create a dump of the database schema
