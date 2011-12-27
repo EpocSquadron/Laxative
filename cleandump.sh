@@ -1,37 +1,44 @@
 #!/bin/bash
 
-# Settings for db connection
-case "$1" in
-  "local" )
-	HOST=
-	PORT=
-	USER=
-	PASS=""
-	DB=
-	ENV="local"
-  ;;
-  "test" )
-  	HOST=
-	PORT=
-	USER=
-	PASS=""
-	DB=
-	ENV="test"
-  ;;
-  * )
-  	cat <<HEREDOC
-	Usage:
-		Specify which enivornment you're in.  Environment credentials must be added to the file ahead of time.
+# Check for existence of mysqldump and sed
+hash mysqldump 2>&- || { echo >&2 "The mysqldump utility is required but is either not installed or not in your PATH.  Aborting."; exit 1; }
+hash sed 2>&- || { echo >&2 "The sed utility is required but is either not installed or not in your PATH.  Aborting."; exit 1; }
 
-	Environments:
-		local - Localhost database.
-		test - Testing database on remote server.
+# Check that user supplied a conf file
+if [ ! $1 ]; then
+  	cat <<HEREDOC
+MySQL CleanDump v1.0.0
+	Usage:
+		Specify a configuration file for the environment you are in as an arguement.
+
+	Example:
+		cleandump.sh ./env.local.conf
 HEREDOC
   	exit;
-  ;;
-esac
+fi
 
-# Let's find out where the script is
+# Set defaults
+ENV="local"
+HOST="localhost"
+PORT="3000"
+USER="root"
+PASS="root"
+DB="test"
+
+# Check if conf exists, then load
+if [ -e $1 ]; then
+	#Remove any code that isn't just a variable def
+	if egrep -q -v '^#|^[^ ]*=[^;]*' "$1"; then
+		echo "Config file is unclean, cleaning it..." >&2
+  		# Overwrite the unclean file
+  		egrep '^#|^[^ ]*=[^;&]*'  "$1" > "$1"
+	fi
+	source "$1"
+else
+	echo >&2 "Configuration file does not exist."; exit 1;
+fi
+
+# Find location of this script so we can save output to correct directory
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # # Create a dump of the database schema
@@ -55,7 +62,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 ## Save db to schema.sql
 # 	$DB >schema.sql
 
-mysqldump --host=$HOST --port=$PORT --user=$USER --password=$PASS --add-drop-table --skip-comments --create-options --default-character-set=utf8 --no-data $DB >$DIR/schema.sql
+mysqldump --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" --add-drop-table --skip-comments --create-options --default-character-set=utf8 --no-data "$DB" >"$DIR"/schema.sql
 
 # # Create a dump of the actual data
 # mysqldump \
@@ -85,5 +92,5 @@ mysqldump --host=$HOST --port=$PORT --user=$USER --password=$PASS --add-drop-tab
 # >data.sql
 
 # Create a dump of the actual data
-mysqldump --host=$HOST --port=$PORT --user=$USER --password=$PASS --complete-insert --skip-comments --disable-keys --extended-insert --no-create-db --no-create-info --quick $DB | sed 's/),(/),\
-(/g' >$DIR/$ENV-data.sql
+mysqldump --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" --complete-insert --skip-comments --disable-keys --extended-insert --no-create-db --no-create-info --quick "$DB" | sed 's/),(/),\
+(/g' >"$DIR"/"$ENV"-data.sql
