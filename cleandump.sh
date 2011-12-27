@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# Check for existence of mysqldump
+# Check for existence of mysqldump and sed
 hash mysqldump 2>&- || { echo >&2 "The mysqldump utility is required but is either not installed or not in your PATH.  Aborting."; exit 1; }
+hash sed 2>&- || { echo >&2 "The sed utility is required but is either not installed or not in your PATH.  Aborting."; exit 1; }
 
 # Check that user supplied a conf file
 if [ ! $1 ]; then
