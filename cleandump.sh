@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Check for existence of mysqldump
+hash mysqldump 2>&- || { echo >&2 "The mysqldump utility is required but is either not installed or not in your PATH.  Aborting."; exit 1; }
+
 # Settings for db connection
 case "$1" in
   "local" )
