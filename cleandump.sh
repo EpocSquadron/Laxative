@@ -4,7 +4,7 @@
 hash mysqldump 2>&- || { echo >&2 "The mysqldump utility is required but is either not installed or not in your PATH.  Aborting."; exit 1; }
 
 # Check that user supplied a conf file
-if [!$1]; then
+if [ ! $1 ]; then
   	cat <<HEREDOC
 MySQL CleanDump v0.9
 	Usage:
@@ -25,7 +25,7 @@ PASS="root"
 DB="test"
 
 # Check if conf exists, then load
-if [-e $1]; then
+if [ -e $1 ]; then
 	#Remove any code that isn't just a variable def
 	if egrep -q -v '^#|^[^ ]*=[^;]*' "$1"; then
 		echo "Config file is unclean, cleaning it..." >&2
