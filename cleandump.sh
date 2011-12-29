@@ -20,7 +20,7 @@ fi
 # Set defaults
 ENV="local"
 HOST="localhost"
-PORT="3000"
+PORT="3306"
 USER="root"
 PASS="root"
 DB="test"
