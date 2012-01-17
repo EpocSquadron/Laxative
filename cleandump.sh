@@ -20,19 +20,13 @@ fi
 # Set defaults
 ENV="local"
 HOST="localhost"
-PORT="3000"
+PORT="3306"
 USER="root"
 PASS="root"
 DB="test"
 
 # Check if conf exists, then load
 if [ -e $1 ]; then
-	#Remove any code that isn't just a variable def
-	if egrep -q -v '^#|^[^ ]*=[^;]*' "$1"; then
-		echo "Config file is unclean, cleaning it..." >&2
-  		# Overwrite the unclean file
-  		egrep '^#|^[^ ]*=[^;&]*'  "$1" > "$1"
-	fi
 	source "$1"
 else
 	echo >&2 "Configuration file does not exist."; exit 1;
@@ -62,7 +56,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 ## Save db to schema.sql
 # 	$DB >schema.sql
 
-mysqldump --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" --add-drop-table --skip-comments --create-options --default-character-set=utf8 --no-data "$DB" >"$DIR"/schema.sql
+mysqldump --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" --add-drop-table --skip-comments --create-options --default-character-set=utf8 --no-data "$DB" >"$DIR"/"$ENV"-schema.sql
 
 # # Create a dump of the actual data
 # mysqldump \
