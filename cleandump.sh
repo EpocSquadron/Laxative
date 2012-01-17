@@ -27,12 +27,6 @@ DB="test"
 
 # Check if conf exists, then load
 if [ -e $1 ]; then
-	#Remove any code that isn't just a variable def
-	if egrep -q -v '^#|^[^ ]*=[^;]*' "$1"; then
-		echo "Config file is unclean, cleaning it..." >&2
-  		# Overwrite the unclean file
-  		egrep '^#|^[^ ]*=[^;&]*'  "$1" > "$1"
-	fi
 	source "$1"
 else
 	echo >&2 "Configuration file does not exist."; exit 1;
