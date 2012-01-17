@@ -62,7 +62,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 ## Save db to schema.sql
 # 	$DB >schema.sql
 
-mysqldump --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" --add-drop-table --skip-comments --create-options --default-character-set=utf8 --no-data "$DB" >"$DIR"/schema.sql
+mysqldump --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" --add-drop-table --skip-comments --create-options --default-character-set=utf8 --no-data "$DB" >"$DIR"/"$ENV"-schema.sql
 
 # # Create a dump of the actual data
 # mysqldump \
