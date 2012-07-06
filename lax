@@ -13,6 +13,8 @@ usage() {
 	Options:
 		dump - Take a dump.
 		load - Load a dump.
+		usurp - Copy one environment's db to another's.
+		debug - Print all of the variables to investigate for errors.
 
 	Description:
 
