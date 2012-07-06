@@ -89,6 +89,11 @@ load() {
 	fi
 }
 
+usurp() {
+	cp -f "$SCHEMA_FILE" "$DIR/$ENV_TO-schema.sql"
+	cp -f "$DATA_FILE" "$DIR/$ENV_TO-data.sql"
+}
+
 ##########################################################
 ## Checks before we do any more                         ##
 ##########################################################
@@ -116,6 +121,13 @@ if [ ! $2 ]; then
 	ENV="local"
 else
 	ENV="$2"
+fi
+
+# Check if user wants to usurp, look for third argument
+if [ $3 -a "$1" = "usurp" ]; then
+	ENV_TO="$3"
+else
+	ENV_TO=""
 fi
 
 # Set defaults to prevent nonexistence errors.
@@ -174,6 +186,9 @@ case $1 in
 		;;
 	"dump")
 		dump
+		;;
+	"usurp")
+		usurp
 		;;
 	"debug")
 		echo "HOST: $HOST"
