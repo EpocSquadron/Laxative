@@ -138,15 +138,17 @@ CONF_FILE="$DIR/$ENV.conf"
 ## Grab configuration
 if [ -e "$EEMASTERCONF_FILE" ]; then
 # Check if ee-master-config exists for this env, then pull form that
-	HOST=`grep -Pio "(?<=hostname\'\]\ \=\ \')([a-z\@\#%^&*()_+.:]+)(?=\')" "$EEMASTERCONF_FILE"`
-	PORT=`grep -Pio "(?<=port\'\]\ \=\ \')([a-z\@\#%^&*()_+.:]+)(?=\')" "$EEMASTERCONF_FILE"`
-	USER=`grep -Pio "(?<=username\'\]\ \=\ \')([a-z\@\#%^&*()_+.:]+)(?=\')" "$EEMASTERCONF_FILE"`
-	PASS=`grep -Pio "(?<=password\'\]\ \=\ \')([a-z\@\#%^&*()_+.:]+)(?=\')" "$EEMASTERCONF_FILE"`
-	DB=`grep -Pio "(?<=database\'\]\ \=\ \')([a-z\@\#%^&*()_+.:]+)(?=\')" "$EEMASTERCONF_FILE"`
+	HOST=`grep -Pio "(?<=hostname\'\]\ \=\ \')([^'']+)(?=\')" "$EEMASTERCONF_FILE"`
+	PORT=`grep -Pio "(?<=port\'\]\ \=\ \')([^'']+)(?=\')" "$EEMASTERCONF_FILE"`
+	USER=`grep -Pio "(?<=username\'\]\ \=\ \')([^'']+)(?=\')" "$EEMASTERCONF_FILE"`
+	PASS=`grep -Pio "(?<=password\'\]\ \=\ \')([^'']+)(?=\')" "$EEMASTERCONF_FILE"`
+	DB=`grep -Pio "(?<=database\'\]\ \=\ \')([^'']+)(?=\')" "$EEMASTERCONF_FILE"`
 
+	# If any of them are now empty, replace with default value
 	for VAR in HOST PORT USER PASS DB; do
 		if [ "${!VAR}" = "" ]; then
-			eval $VAR="${!DEFAULT_$VAR}"
+			TMP="DEFAULT_$VAR"
+			eval $VAR="${!TMP}"
 		fi
 	done
 elif [ -e "$CONF_FILE" ]; then
@@ -183,6 +185,7 @@ case $1 in
 		echo "SCHEMA_FILE: $SCHEMA_FILE"
 		echo "EEMASTERCONF_FILE: $EEMASTERCONF_FILE"
 		echo "CONF_FILE: $CONF_FILE"
+		;;
 	*)
 		usage
 		;;
