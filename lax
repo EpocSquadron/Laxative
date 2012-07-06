@@ -124,7 +124,7 @@ else
 fi
 
 # Check if user wants to usurp, look for third argument
-if [ $3 -a "$1" = "usurp" ]; then
+if [ -n "${!3}" -a "$1" = "usurp" ]; then
 	ENV_TO="$3"
 else
 	ENV_TO=""
