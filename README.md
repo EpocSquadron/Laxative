@@ -24,4 +24,4 @@ Or add the MAMP MySQL binaries to your PATH in ~/.bash_profile:
 
 ## Installation
 
-Simply copy lax to it's own directory inside your project.  Laxative will save and load databases from that directory.
+Simply copy lax to it's own directory inside the root of your project.  Laxative will save and load databases from that directory. Configuration for each environment will either be inherited from your ee-master-config configuration, or from .conf files in it's own directory matching the syntax of template.conf.
