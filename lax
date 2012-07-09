@@ -46,6 +46,10 @@ dump() {
 
 	mysqldump --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" --add-drop-table --skip-comments --create-options --default-character-set=utf8 --no-data "$DB" >"$SCHEMA_FILE"
 
+	# # Create a dump of the routines (functions & procedures) only.
+	#
+	mysqldump --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" --routines --skip-triggers --no-create-info --no-data --no-create-db --skip-opt "$DB" >"$ROUTINES_FILE"
+
 	# # Create a dump of the actual data
 	# mysqldump \
 	## Connection to localhost
@@ -84,6 +88,7 @@ load() {
 	if [ -e "$SCHEMA_FILE" -a -e "$DATA_FILE" ]; then
 		mysql --user="$USER" --password="$PASS" --host="$HOST" --port="$PORT" "$DB" < "$SCHEMA_FILE"
 		mysql --user="$USER" --password="$PASS" --host="$HOST" --port="$PORT" "$DB" < "$DATA_FILE"
+		mysql --user="$USER" --password="$PASS" --host="$HOST" --port="$PORT" "$DB" < "$ROUTINES_FILE"
 	else
 		echo >&2 "One or both of the schema and data files for this environment do not exist."; exit 1;
 	fi
@@ -93,6 +98,7 @@ load() {
 usurp() {
 	cp -f "$SCHEMA_FILE" "$DIR/$ENV_TO-schema.sql"
 	cp -f "$DATA_FILE" "$DIR/$ENV_TO-data.sql"
+	cp -f "$ROUTINES_FILE" "$DIR/$ENV_TO-routines.sql"
 }
 
 # Function for grabbing a config value out of an ee-master-confi configuration file.
@@ -206,6 +212,7 @@ fi
 # Now that we have complete config data, set locations of dump files.
 DATA_FILE="$DIR/$ENV-data.sql"
 SCHEMA_FILE="$DIR/$ENV-schema.sql"
+ROUTINES_FILE="$DIR/$ENV-routines.sql"
 
 
 ###########################################################

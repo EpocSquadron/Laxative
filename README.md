@@ -6,9 +6,10 @@ Laxative is a simple, yet tasteful script for standardizing MySQL database dumps
 
 A working installation (findable in BASH's PATH) of the following:
 
+ - bash (or bash-compatible shell)
  - mysql (& mysqldump)
  - sed (BSD or GNU)
- - grep
+ - grep (w/Perl regex support)
 
 ### Note to MAMP Users
 
@@ -41,6 +42,10 @@ Laxative works via the script `lax`, which accepts a command followed by an "env
 ### Replace One Environment's Dump with Another's
 
     lax usurp <from_environment_shortname> <to_environment_shortname>
+
+## How It Works
+
+Laxative dumps your database as a set of three files named after the environment to which they belong. These files contain, respectively, the database's schema, data and routines. Separating them allows you to cherry pick certain aspects of one database and apply them to another.
 
 ## Not Completely Satisfied?
 
