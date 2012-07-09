@@ -89,11 +89,13 @@ load() {
 	fi
 }
 
+# Function for copying one env's dump on top of another's
 usurp() {
 	cp -f "$SCHEMA_FILE" "$DIR/$ENV_TO-schema.sql"
 	cp -f "$DATA_FILE" "$DIR/$ENV_TO-data.sql"
 }
 
+# Function for grabbing a config value out of an ee-master-confi configuration file.
 grab_eemasterconfig_value() {
 	## Filter comments with sed
 	## Remove single-line comments (// comment)
