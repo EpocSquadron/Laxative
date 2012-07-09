@@ -94,6 +94,36 @@ usurp() {
 	cp -f "$DATA_FILE" "$DIR/$ENV_TO-data.sql"
 }
 
+grab_eemasterconfig_value() {
+	## Filter comments with sed
+	## Remove single-line comments (// comment)
+	#	s/\/\/.*$//;
+	## Insert newlines before /*
+	#	s/\/\*/\
+	#	&/;
+	## Insert newlines after */
+	#	s/\*\//&\
+	#	/
+	## Remove one-line block comments (/* something */)
+	#	/\/\*.*\*\//d;
+	## Remove multi-line block comments
+	##	(/* line 1
+	##	  * line 2 */)
+	#	/\/\*/,/\*\//d
+	## Strip empty lines
+	#	/^\ *$/d
+	## Extract variable with grep
+	## Lookbehind, but dont match for $1'] = '
+	#	(?<=$1\'\]\ \=\ \')
+	## Match anything that isn't the closing single quote
+	#	([^']+)
+	## Lookahead for closing single quote
+	#	(?=\')
+	sed 's/\/\/.*$//;s/\/\*/\
+	&/;s/\*\//&\
+	/' "$EEMASTERCONF_FILE" | sed '/\/\*.*\*\//d;/\/\*/,/\*\//d;/^\ *$/d' | grep -Pio "(?<=$1\'\]\ \=\ \')([^']+)(?=\')"
+}
+
 ##########################################################
 ## Checks before we do any more                         ##
 ##########################################################
@@ -150,11 +180,11 @@ CONF_FILE="$DIR/$ENV.conf"
 ## Grab configuration
 if [ -e "$EEMASTERCONF_FILE" ]; then
 # Check if ee-master-config exists for this env, then pull form that
-	HOST=`grep -Pio "(?<=hostname\'\]\ \=\ \')([^'']+)(?=\')" "$EEMASTERCONF_FILE"`
-	PORT=`grep -Pio "(?<=port\'\]\ \=\ \')([^'']+)(?=\')" "$EEMASTERCONF_FILE"`
-	USER=`grep -Pio "(?<=username\'\]\ \=\ \')([^'']+)(?=\')" "$EEMASTERCONF_FILE"`
-	PASS=`grep -Pio "(?<=password\'\]\ \=\ \')([^'']+)(?=\')" "$EEMASTERCONF_FILE"`
-	DB=`grep -Pio "(?<=database\'\]\ \=\ \')([^'']+)(?=\')" "$EEMASTERCONF_FILE"`
+	HOST=`grab_eemasterconfig_value hostname`
+	PORT=`grab_eemasterconfig_value port`
+	USER=`grab_eemasterconfig_value username`
+	PASS=`grab_eemasterconfig_value password`
+	DB=`grab_eemasterconfig_value database`
 
 	# If any of them are now empty, replace with default value
 	for VAR in HOST PORT USER PASS DB; do
