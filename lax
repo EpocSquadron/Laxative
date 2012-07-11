@@ -104,8 +104,9 @@ usurp() {
 # Function for grabbing a config value out of an ee-master-confi configuration file.
 grab_eemasterconfig_value() {
 	## Filter comments with sed
-	## Remove single-line comments (// comment)
+	## Remove single-line comments (// or # comment)
 	#	s/\/\/.*$//;
+	#   s/#.*//
 	## Insert newlines before /*
 	#	s/\/\*/\
 	#	&/;
@@ -127,9 +128,9 @@ grab_eemasterconfig_value() {
 	#	([^']+)
 	## Lookahead for closing single quote
 	#	(?=\')
-	sed 's/\/\/.*$//;s/\/\*/\
+	sed 's/\/\/.*$//;s/#.*//;s/\/\*/\
 	&/;s/\*\//&\
-	/' "$EEMASTERCONF_FILE" | sed '/\/\*.*\*\//d;/\/\*/,/\*\//d;/^\ *$/d' | grep -Pio "(?<=$1\'\]\ \=\ \')([^']+)(?=\')"
+	/' "$EEMASTERCONF_FILE" | sed '/\/\*.*\*\//d;/\/\*/,/\*\//d;/^\ *$/d' | grep -Pio "(?<=$1['\"]\]\ \=\ ['\"])([^'\"]+)(?=['\"])"
 }
 
 ##########################################################
