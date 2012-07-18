@@ -13,7 +13,7 @@ usage() {
 	Options:
 		dump - Take a dump.
 		load - Load a dump.
-		usurp - Copy one environment's db to another's.
+		wipe - Copy one environment's db to another's.
 		debug - Print all of the variables to investigate for errors.
 
 	Description:
@@ -162,8 +162,8 @@ else
 	ENV="$2"
 fi
 
-# Check if user wants to usurp, look for third argument
-if [ -n "${!3}" -a "$1" = "usurp" ]; then
+# Check if user wants to wipe, look for third argument
+if [ -n "${!3}" -a "$1" = "wipe" ]; then
 	ENV_TO="$3"
 else
 	ENV_TO=""
@@ -227,8 +227,8 @@ case $1 in
 	"dump")
 		dump
 		;;
-	"usurp")
-		usurp
+	"wipe")
+		wipe
 		;;
 	"debug")
 		echo "HOST: $HOST"
