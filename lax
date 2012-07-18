@@ -95,14 +95,16 @@ load() {
 }
 
 # Function for copying one env's dump on top of another's
-usurp() {
+wipe() {
 	cp -f "$SCHEMA_FILE" "$DIR/$ENV_TO-schema.sql"
 	cp -f "$DATA_FILE" "$DIR/$ENV_TO-data.sql"
 	cp -f "$ROUTINES_FILE" "$DIR/$ENV_TO-routines.sql"
 }
 
 # Function for grabbing a config value out of an ee-master-confi configuration file.
-grab_eemasterconfig_value() {
+# Arg1 File to search.
+# Arg2 Keyword of config value to search for.
+grab_php_config_value() {
 	## Filter comments with sed
 	## Remove single-line comments (// or # comment)
 	#	s/\/\/.*$//;
@@ -130,7 +132,7 @@ grab_eemasterconfig_value() {
 	#	(?=\')
 	sed 's/\/\/.*$//;s/#.*//;s/\/\*/\
 	&/;s/\*\//&\
-	/' "$EEMASTERCONF_FILE" | sed '/\/\*.*\*\//d;/\/\*/,/\*\//d;/^\ *$/d' | grep -Pio "(?<=$1['\"]\]\ \=\ ['\"])([^'\"]+)(?=['\"])"
+	/' "$1" | sed '/\/\*.*\*\//d;/\/\*/,/\*\//d;/^\ *$/d' | grep -Pio "(?<=$2['\"]\]\ \=\ ['\"])([^'\"]+)(?=['\"])"
 }
 
 ##########################################################
@@ -184,16 +186,18 @@ DB="$DEFAULT_DB"
 
 # Path to possible configuration files
 EEMASTERCONF_FILE="$DIR/../config/config.$ENV.php"
+CI_ENV_CONF_FILE="$DIR/../application/config/$ENV/database.php"
 CONF_FILE="$DIR/$ENV.conf"
+WHICH_CONF=""
 
 ## Grab configuration
 if [ -e "$EEMASTERCONF_FILE" ]; then
 # Check if ee-master-config exists for this env, then pull form that
-	HOST=`grab_eemasterconfig_value hostname`
-	PORT=`grab_eemasterconfig_value port`
-	USER=`grab_eemasterconfig_value username`
-	PASS=`grab_eemasterconfig_value password`
-	DB=`grab_eemasterconfig_value database`
+	HOST=`grab_php_config_value $EEMASTERCONF_FILE hostname`
+	PORT=`grab_php_config_value $EEMASTERCONF_FILE port`
+	USER=`grab_php_config_value $EEMASTERCONF_FILE username`
+	PASS=`grab_php_config_value $EEMASTERCONF_FILE password`
+	DB=`grab_php_config_value $EEMASTERCONF_FILE database`
 
 	# If any of them are now empty, replace with default value
 	for VAR in HOST PORT USER PASS DB; do
@@ -202,9 +206,29 @@ if [ -e "$EEMASTERCONF_FILE" ]; then
 			eval $VAR="${!TMP}"
 		fi
 	done
+
+	WHICH_CONF="ee-master-config ($EEMASTERCONF_FILE)"
+elif [ -e "$CI_ENV_CONF_FILE" ]; then
+# Check if ee-master-config exists for this env, then pull form that
+	HOST=`grab_php_config_value $CI_ENV_CONF_FILE hostname`
+	PORT=`grab_php_config_value $CI_ENV_CONF_FILE port`
+	USER=`grab_php_config_value $CI_ENV_CONF_FILE username`
+	PASS=`grab_php_config_value $CI_ENV_CONF_FILE password`
+	DB=`grab_php_config_value $CI_ENV_CONF_FILE database`
+
+	# If any of them are now empty, replace with default value
+	for VAR in HOST PORT USER PASS DB; do
+		if [ "${!VAR}" = "" ]; then
+			TMP="DEFAULT_$VAR"
+			eval $VAR="${!TMP}"
+		fi
+	done
+
+	WHICH_CONF="codeigniter environment ($CI_ENV_CONF_FILE)"
 elif [ -e "$CONF_FILE" ]; then
 # Check for configuration file as fallback.
 	source "$CONF_FILE"
+	WHICH_CONF="lax conf file ($CONF_FILE)"
 else
 # Error out.
 	echo >&2 "Configuration file does not exist."; exit 1;
@@ -240,6 +264,7 @@ case $1 in
 		echo "SCHEMA_FILE: $SCHEMA_FILE"
 		echo "EEMASTERCONF_FILE: $EEMASTERCONF_FILE"
 		echo "CONF_FILE: $CONF_FILE"
+		echo "WHICH_CONF: $WHICH_CONF"
 		;;
 	*)
 		usage
