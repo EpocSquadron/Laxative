@@ -35,7 +35,7 @@ Laxative works via the script `lax`, which accepts a command followed by an "env
 
     lax dump <environment_shortname>
 
-### [Load a Dump](http://www.urbandictionary.com/define.php?term=two+girls+one+cup)
+### Load a Dump
 
     lax load <environment_shortname>
 

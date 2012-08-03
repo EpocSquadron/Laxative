@@ -1,5 +1,13 @@
 #!/bin/bash
 
+##########################################################################
+## License                                                              ##
+##                                                                      ##
+## This Source Code Form is subject to the terms of the Mozilla Public  ##
+## License, v. 2.0. If a copy of the MPL was not distributed with this  ##
+## file, You can obtain one at http://mozilla.org/MPL/2.0/.             ##
+##########################################################################
+
 ##########################################################
 ## Master configuration                                 ##
 ##########################################################
@@ -21,12 +29,12 @@ usage() {
 
 \033[1mOptions:\033[0m
 	\033[1mdump\033[0m - Take a dump.
-		With one option, reads config data for that environment, writes dump to that environment's files.
-		With two options, reads config data for the first environment, writes dump to second environment's files.
+		With one argument, reads config data for that environment, writes dump to that environment's files.
+		With two arguments, reads config data for the first environment, writes dump to second environment's files.
 
 	\033[1mload\033[0m - Load a dump.
-		With one option, reads config data for that environment, loads from that environment's files.
-		With two options, reads config data for the first environment, loads from the second environment's files.
+		With one argument, reads config data for that environment, loads from that environment's files.
+		With two arguments, reads config data for the first environment, loads from the second environment's files.
 
 	\033[1mwipe\033[0m - Copy one environment's db to another's.
 		Third argument required. Copies first environment's dump onto the second's (overwriting).
