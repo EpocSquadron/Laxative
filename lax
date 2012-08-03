@@ -53,9 +53,15 @@ dump() {
 	fi
 
 	# Create backup first.
-	if [ -e DUMP_SCHEMA_FILE ]; then; mv "$DUMP_SCHEMA_FILE" "$DUMP_SCHEMA_FILE.$BACKUP_FILE_EXTENSION"; fi
-	if [ -e DUMP_ROUTINES_FILE ]; then; mv "$DUMP_ROUTINES_FILE" "$DUMP_ROUTINES_FILE.$BACKUP_FILE_EXTENSION"; fi
-	if [ -e DUMP_DATA_FILE ]; then; mv "$DUMP_DATA_FILE" "$DUMP_DATA_FILE.$BACKUP_FILE_EXTENSION"; fi
+	if [ -f "$DUMP_SCHEMA_FILE" ]; then
+		mv "$DUMP_SCHEMA_FILE" "$DUMP_SCHEMA_FILE.$BACKUP_FILE_EXTENSION"
+	fi
+	if [ -f "$DUMP_ROUTINES_FILE" ]; then
+		mv "$DUMP_ROUTINES_FILE" "$DUMP_ROUTINES_FILE.$BACKUP_FILE_EXTENSION"
+	fi
+	if [ -f "$DUMP_DATA_FILE" ]; then
+		mv "$DUMP_DATA_FILE" "$DUMP_DATA_FILE.$BACKUP_FILE_EXTENSION"
+	fi
 
 	# Do it.
 	do_dump "$DUMP_SCHEMA_FILE" "$DUMP_ROUTINES_FILE" "$DUMP_DATA_FILE"
@@ -97,9 +103,15 @@ load() {
 # Function for copying one env's dump on top of another's
 wipe() {
 	# Create backup first.
-	if [ -e TO_SCHEMA_FILE ]; then; mv "$TO_SCHEMA_FILE" "$TO_SCHEMA_FILE.$BACKUP_FILE_EXTENSION"; fi
-	if [ -e TO_ROUTINES_FILE ]; then; mv "$TO_ROUTINES_FILE" "$TO_ROUTINES_FILE.$BACKUP_FILE_EXTENSION"; fi
-	if [ -e TO_DATA_FILE ]; then; mv "$TO_DATA_FILE" "$TO_DATA_FILE.$BACKUP_FILE_EXTENSION"; fi
+	if [ -f "$TO_SCHEMA_FILE" ]; then
+		mv "$TO_SCHEMA_FILE" "$TO_SCHEMA_FILE.$BACKUP_FILE_EXTENSION"
+	fi
+	if [ -f "$TO_ROUTINES_FILE" ]; then
+		mv "$TO_ROUTINES_FILE" "$TO_ROUTINES_FILE.$BACKUP_FILE_EXTENSION"
+	fi
+	if [ -f "$TO_DATA_FILE" ]; then
+		mv "$TO_DATA_FILE" "$TO_DATA_FILE.$BACKUP_FILE_EXTENSION"
+	fi
 
 	# Overwrite.
 	cp -f "$FROM_SCHEMA_FILE" "$TO_SCHEMA_FILE"
@@ -209,7 +221,11 @@ do_dump() {
 }
 
 check_mysql_db_connection() {
-
+	local TEST=`mysql --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" -e "SHOW DATABASES;" | grep -i "$DB"`
+	if [ "$TEST" != "$DB" ]; then
+		echo >&2 "Unable to connect to $ENV's database."
+		exit 1
+	fi
 }
 
 ##########################################################
