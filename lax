@@ -1,7 +1,13 @@
 #!/bin/bash
 
 ##########################################################
-## Define functions                                     ##
+## Master configuration                                 ##
+##########################################################
+
+BACKUP_FILE_EXTENSION="bak"
+
+##########################################################
+## Define commands                                      ##
 ##########################################################
 
 # Function to display usage
@@ -35,91 +41,45 @@ HEREDOC
 # Function for creating dump files.
 dump() {
 	if [ "$ENV_TO" = "" ]; then
-		DUMP_SCHEMA_FILE="$FROM_SCHEMA_FILE"
-		DUMP_DATA_FILE="$FROM_DATA_FILE"
-		DUMP_ROUTINES_FILE="$FROM_ROUTINES_FILE"
-		DUMP_TO="$ENV"
+		local DUMP_SCHEMA_FILE="$FROM_SCHEMA_FILE"
+		local DUMP_DATA_FILE="$FROM_DATA_FILE"
+		local DUMP_ROUTINES_FILE="$FROM_ROUTINES_FILE"
+		local DUMP_TO="$ENV"
 	else
-		DUMP_SCHEMA_FILE="$TO_SCHEMA_FILE"
-		DUMP_DATA_FILE="$TO_DATA_FILE"
-		DUMP_ROUTINES_FILE="$TO_ROUTINES_FILE"
-		DUMP_TO="$ENV_TO"
+		local DUMP_SCHEMA_FILE="$TO_SCHEMA_FILE"
+		local DUMP_DATA_FILE="$TO_DATA_FILE"
+		local DUMP_ROUTINES_FILE="$TO_ROUTINES_FILE"
+		local DUMP_TO="$ENV_TO"
 	fi
 
-	# # Create a dump of the database schema
-	# mysqldump \
-	## Connection to localhost
-	# 	--host=$HOST \
-	# 	--port=$PORT \
-	# 	--user=$USER \
-	# 	--password=$PASS \
-	## Drop everything first - Not drop database
-	##  for compatibility with cPanel
-	# 	--add-drop-table \
-	## Skip commenting, as timestamp changes diff
-	#  --skip-comments
-	## Make sure to recreate every detail
-	# 	--create-options \
-	## Use utf8
-	# 	--default-character-set=utf8 \
-	## Don't dump the data
-	# 	--no-data \
-	## Save db to schema.sql
-	# 	$DB >schema.sql
+	# Create backup first.
+	if [ -e DUMP_SCHEMA_FILE ]; then; mv "$DUMP_SCHEMA_FILE" "$DUMP_SCHEMA_FILE.$BACKUP_FILE_EXTENSION"; fi
+	if [ -e DUMP_ROUTINES_FILE ]; then; mv "$DUMP_ROUTINES_FILE" "$DUMP_ROUTINES_FILE.$BACKUP_FILE_EXTENSION"; fi
+	if [ -e DUMP_DATA_FILE ]; then; mv "$DUMP_DATA_FILE" "$DUMP_DATA_FILE.$BACKUP_FILE_EXTENSION"; fi
 
-	mysqldump --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" --add-drop-table --skip-comments --create-options --default-character-set=utf8 --no-data "$DB" >"$DUMP_SCHEMA_FILE"
-
-	# # Create a dump of the routines (functions & procedures) only.
-	#
-	mysqldump --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" --routines --skip-triggers --no-create-info --no-data --no-create-db --skip-opt "$DB" >"$DUMP_ROUTINES_FILE"
-
-	# # Create a dump of the actual data
-	# mysqldump \
-	## Connection to localhost
-	# 	--host=$HOST \
-	# 	--port=$PORT \
-	# 	--user=$USER \
-	# 	--password=$PASS \
-	## Include column names in inserts
-	# 	--complete-insert \
-	## Skip commenting, as timestamp changes diff
-	#  --skip-comments
-	## Make loading faster by delaying index creation
-	# 	--disable-keys \
-	## Use VALUES (row1), (row2),.. for smaller file, faster insert
-	# 	--extended-insert \
-	## Don't replicate db and table data
-	# 	--no-create-db \
-	# 	--no-create-info \
-	## Don't buffer rows in case db very large
-	# 	--quick \
-	##  Split VALUES (),(),...,(); into newline separated
-	##  This makes diffs smaller for git.
-	# 	$DB | sed 's/),(/),\
-	#   (/g'
-	## Save db to data.sql
-	# >data.sql
-
-	# Create a dump of the actual data
-	mysqldump --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" --complete-insert --skip-comments --disable-keys --extended-insert --no-create-db --no-create-info --quick "$DB" | sed 's/),(/),\
-	(/g' >"$DUMP_DATA_FILE"
+	# Do it.
+	do_dump "$DUMP_SCHEMA_FILE" "$DUMP_ROUTINES_FILE" "$DUMP_DATA_FILE"
 
 	echo "Database from environment $ENV dumped to files for environment $DUMP_TO."
+	exit 0
 }
 
 # Function for loading dump files.
 load() {
 	if [ "$ENV_TO" = "" ]; then
-		LOAD_SCHEMA_FILE="$FROM_SCHEMA_FILE"
-		LOAD_DATA_FILE="$FROM_DATA_FILE"
-		LOAD_ROUTINES_FILE="$FROM_ROUTINES_FILE"
-		LOAD_FROM="$ENV"
+		local LOAD_SCHEMA_FILE="$FROM_SCHEMA_FILE"
+		local LOAD_DATA_FILE="$FROM_DATA_FILE"
+		local LOAD_ROUTINES_FILE="$FROM_ROUTINES_FILE"
+		local LOAD_FROM="$ENV"
 	else
-		LOAD_SCHEMA_FILE="$TO_SCHEMA_FILE"
-		LOAD_DATA_FILE="$TO_DATA_FILE"
-		LOAD_ROUTINES_FILE="$TO_ROUTINES_FILE"
-		LOAD_FROM="$ENV_TO"
+		local LOAD_SCHEMA_FILE="$TO_SCHEMA_FILE"
+		local LOAD_DATA_FILE="$TO_DATA_FILE"
+		local LOAD_ROUTINES_FILE="$TO_ROUTINES_FILE"
+		local LOAD_FROM="$ENV_TO"
 	fi
+
+	# Backup the database about to be overwritten first.
+	do_dump "$FROM_SCHEMA_FILE.$BACKUP_FILE_EXTENSION" "$FROM_ROUTINES_FILE.$BACKUP_FILE_EXTENSION" "$FROM_DATA_FILE.$BACKUP_FILE_EXTENSION"
 
 	# Update the database
 	if [ -e "$LOAD_SCHEMA_FILE" -a -e "$LOAD_DATA_FILE" -a -e "$LOAD_ROUTINES_FILE" ]; then
@@ -127,17 +87,32 @@ load() {
 		mysql --user="$USER" --password="$PASS" --host="$HOST" --port="$PORT" "$DB" < "$LOAD_DATA_FILE"
 		mysql --user="$USER" --password="$PASS" --host="$HOST" --port="$PORT" "$DB" < "$LOAD_ROUTINES_FILE"
 		echo "Database loaded into environment $ENV from environment $LOAD_FROM's dump files."
+		exit 0
 	else
-		echo >&2 "One or more of the schema, data, and routines files for environment $LOAD_FROM are missing."; exit 1;
+		echo >&2 "One or more of the schema, data, and routines files for environment $LOAD_FROM are missing."
+		exit 1
 	fi
 }
 
 # Function for copying one env's dump on top of another's
 wipe() {
+	# Create backup first.
+	if [ -e TO_SCHEMA_FILE ]; then; mv "$TO_SCHEMA_FILE" "$TO_SCHEMA_FILE.$BACKUP_FILE_EXTENSION"; fi
+	if [ -e TO_ROUTINES_FILE ]; then; mv "$TO_ROUTINES_FILE" "$TO_ROUTINES_FILE.$BACKUP_FILE_EXTENSION"; fi
+	if [ -e TO_DATA_FILE ]; then; mv "$TO_DATA_FILE" "$TO_DATA_FILE.$BACKUP_FILE_EXTENSION"; fi
+
+	# Overwrite.
 	cp -f "$FROM_SCHEMA_FILE" "$TO_SCHEMA_FILE"
 	cp -f "$FROM_DATA_FILE" "$TO_DATA_FILE"
 	cp -f "$FROM_ROUTINES_FILE" "$TO_ROUTINES_FILE"
+
+	echo "Environment $ENV's dumps copied to environment $ENV_TO's dumps."
+	exit 0
 }
+
+##########################################################
+## Define helper funcitons                              ##
+##########################################################
 
 # Function for grabbing a config value out of an ee-master-confi configuration file.
 # Arg1 File to search.
@@ -171,6 +146,70 @@ grab_php_config_value() {
 	sed 's/\/\/.*$//;s/#.*//;s/\/\*/\
 	&/;s/\*\//&\
 	/' "$1" | sed '/\/\*.*\*\//d;/\/\*/,/\*\//d;/^\ *$/d' | grep -Pio "(?<=$2['\"]\]\ \=\ ['\"])([^'\"]+)(?=['\"])"
+}
+
+do_dump() {
+	# # Create a dump of the database schema
+	# mysqldump \
+	## Connection to localhost
+	# 	--host=$HOST \
+	# 	--port=$PORT \
+	# 	--user=$USER \
+	# 	--password=$PASS \
+	## Drop everything first - Not drop database
+	##  for compatibility with cPanel
+	# 	--add-drop-table \
+	## Skip commenting, as timestamp changes diff
+	#  --skip-comments
+	## Make sure to recreate every detail
+	# 	--create-options \
+	## Use utf8
+	# 	--default-character-set=utf8 \
+	## Don't dump the data
+	# 	--no-data \
+	## Save db to schema.sql
+	# 	$DB >schema.sql
+
+	mysqldump --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" --add-drop-table --skip-comments --create-options --default-character-set=utf8 --no-data "$DB" >"$1"
+
+	# # Create a dump of the routines (functions & procedures) only.
+	#
+	mysqldump --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" --routines --skip-triggers --no-create-info --no-data --no-create-db --skip-opt "$DB" >"$2"
+
+	# # Create a dump of the actual data
+	# mysqldump \
+	## Connection to localhost
+	# 	--host=$HOST \
+	# 	--port=$PORT \
+	# 	--user=$USER \
+	# 	--password=$PASS \
+	## Include column names in inserts
+	# 	--complete-insert \
+	## Skip commenting, as timestamp changes diff
+	#  --skip-comments
+	## Make loading faster by delaying index creation
+	# 	--disable-keys \
+	## Use VALUES (row1), (row2),.. for smaller file, faster insert
+	# 	--extended-insert \
+	## Don't replicate db and table data
+	# 	--no-create-db \
+	# 	--no-create-info \
+	## Don't buffer rows in case db very large
+	# 	--quick \
+	##  Split VALUES (),(),...,(); into newline separated
+	##  This makes diffs smaller for git.
+	# 	$DB | sed 's/),(/),\
+	#   (/g'
+	## Save db to data.sql
+	# >data.sql
+
+	# Create a dump of the actual data
+	mysqldump --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" --complete-insert --skip-comments --disable-keys --extended-insert --no-create-db --no-create-info --quick "$DB" | sed 's/),(/),\
+	(/g' >"$3"
+}
+
+check_mysql_db_connection() {
+
 }
 
 ##########################################################
@@ -288,9 +327,11 @@ TO_ROUTINES_FILE="$DIR/$ENV_TO-routines.sql"
 
 case $1 in
 	"load")
+		check_mysql_db_connection
 		load
 		;;
 	"dump")
+		check_mysql_db_connection
 		dump
 		;;
 	"wipe")
