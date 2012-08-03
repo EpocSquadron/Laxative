@@ -8,12 +8,20 @@
 usage() {
   	cat <<HEREDOC
 	Usage:
-		`basename $0` (dump|load) [environment_shortname]
+		`basename $0` (dump|load) [from_environment_shortname] [to_environment_shortname]
 
 	Options:
 		dump - Take a dump.
+				With one option, reads config data for that environment, writes dump to that environment's files.
+				With two options, reads config data for the first environment, writes dump to second environment's files.
+
 		load - Load a dump.
+				With one option, reads config data for that environment, loads from that environment's files.
+				With two options, reads config data for the first environment, loads from the second environment's files.
+
 		wipe - Copy one environment's db to another's.
+				Third argument required. Copies first environment's dump onto the second's (overwriting).
+
 		debug - Print all of the variables to investigate for errors.
 
 	Description:
@@ -23,6 +31,18 @@ HEREDOC
 
 # Function for creating dump files.
 dump() {
+	if [ "$ENV_TO" = "" ]; then
+		DUMP_SCHEMA_FILE="$FROM_SCHEMA_FILE"
+		DUMP_DATA_FILE="$FROM_DATA_FILE"
+		DUMP_ROUTINES_FILE="$FROM_ROUTINES_FILE"
+		DUMP_TO="$ENV"
+	else
+		DUMP_SCHEMA_FILE="$TO_SCHEMA_FILE"
+		DUMP_DATA_FILE="$TO_DATA_FILE"
+		DUMP_ROUTINES_FILE="$TO_ROUTINES_FILE"
+		DUMP_TO="$ENV_TO"
+	fi
+
 	# # Create a dump of the database schema
 	# mysqldump \
 	## Connection to localhost
@@ -44,11 +64,11 @@ dump() {
 	## Save db to schema.sql
 	# 	$DB >schema.sql
 
-	mysqldump --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" --add-drop-table --skip-comments --create-options --default-character-set=utf8 --no-data "$DB" >"$SCHEMA_FILE"
+	mysqldump --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" --add-drop-table --skip-comments --create-options --default-character-set=utf8 --no-data "$DB" >"$DUMP_SCHEMA_FILE"
 
 	# # Create a dump of the routines (functions & procedures) only.
 	#
-	mysqldump --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" --routines --skip-triggers --no-create-info --no-data --no-create-db --skip-opt "$DB" >"$ROUTINES_FILE"
+	mysqldump --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" --routines --skip-triggers --no-create-info --no-data --no-create-db --skip-opt "$DB" >"$DUMP_ROUTINES_FILE"
 
 	# # Create a dump of the actual data
 	# mysqldump \
@@ -79,26 +99,41 @@ dump() {
 
 	# Create a dump of the actual data
 	mysqldump --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" --complete-insert --skip-comments --disable-keys --extended-insert --no-create-db --no-create-info --quick "$DB" | sed 's/),(/),\
-	(/g' >"$DATA_FILE"
+	(/g' >"$DUMP_DATA_FILE"
+
+	echo "Database from environment $ENV dumped to files for environment $DUMP_TO."
 }
 
 # Function for loading dump files.
 load() {
-	# Update the database
-	if [ -e "$SCHEMA_FILE" -a -e "$DATA_FILE" ]; then
-		mysql --user="$USER" --password="$PASS" --host="$HOST" --port="$PORT" "$DB" < "$SCHEMA_FILE"
-		mysql --user="$USER" --password="$PASS" --host="$HOST" --port="$PORT" "$DB" < "$DATA_FILE"
-		mysql --user="$USER" --password="$PASS" --host="$HOST" --port="$PORT" "$DB" < "$ROUTINES_FILE"
+	if [ "$ENV_TO" = "" ]; then
+		LOAD_SCHEMA_FILE="$FROM_SCHEMA_FILE"
+		LOAD_DATA_FILE="$FROM_DATA_FILE"
+		LOAD_ROUTINES_FILE="$FROM_ROUTINES_FILE"
+		LOAD_FROM="$ENV"
 	else
-		echo >&2 "One or both of the schema and data files for this environment do not exist."; exit 1;
+		LOAD_SCHEMA_FILE="$TO_SCHEMA_FILE"
+		LOAD_DATA_FILE="$TO_DATA_FILE"
+		LOAD_ROUTINES_FILE="$TO_ROUTINES_FILE"
+		LOAD_FROM="$ENV_TO"
+	fi
+
+	# Update the database
+	if [ -e "$LOAD_SCHEMA_FILE" -a -e "$LOAD_DATA_FILE" -a -e "$LOAD_ROUTINES_FILE" ]; then
+		mysql --user="$USER" --password="$PASS" --host="$HOST" --port="$PORT" "$DB" < "$LOAD_SCHEMA_FILE"
+		mysql --user="$USER" --password="$PASS" --host="$HOST" --port="$PORT" "$DB" < "$LOAD_DATA_FILE"
+		mysql --user="$USER" --password="$PASS" --host="$HOST" --port="$PORT" "$DB" < "$LOAD_ROUTINES_FILE"
+		echo "Database loaded into environment $ENV from environment $LOAD_FROM's dump files."
+	else
+		echo >&2 "One or more of the schema, data, and routines files for environment $LOAD_FROM are missing."; exit 1;
 	fi
 }
 
 # Function for copying one env's dump on top of another's
 wipe() {
-	cp -f "$SCHEMA_FILE" "$DIR/$ENV_TO-schema.sql"
-	cp -f "$DATA_FILE" "$DIR/$ENV_TO-data.sql"
-	cp -f "$ROUTINES_FILE" "$DIR/$ENV_TO-routines.sql"
+	cp -f "$FROM_SCHEMA_FILE" "$TO_SCHEMA_FILE"
+	cp -f "$FROM_DATA_FILE" "$TO_DATA_FILE"
+	cp -f "$FROM_ROUTINES_FILE" "$TO_ROUTINES_FILE"
 }
 
 # Function for grabbing a config value out of an ee-master-confi configuration file.
@@ -164,11 +199,11 @@ else
 	ENV="$2"
 fi
 
-# Check if user wants to wipe, look for third argument
-if [ -n "${!3}" -a "$1" = "wipe" ]; then
-	ENV_TO="$3"
-else
+# Check for optional third argument
+if [ ! $3 ]; then
 	ENV_TO=""
+else
+	ENV_TO="$3"
 fi
 
 # Set defaults to prevent nonexistence errors.
@@ -207,7 +242,7 @@ if [ -e "$EEMASTERCONF_FILE" ]; then
 		fi
 	done
 
-	WHICH_CONF="ee-master-config ($EEMASTERCONF_FILE)"
+	WHICH_CONF="ee-master-config"
 elif [ -e "$CI_ENV_CONF_FILE" ]; then
 # Check if ee-master-config exists for this env, then pull form that
 	HOST=`grab_php_config_value $CI_ENV_CONF_FILE hostname`
@@ -224,7 +259,7 @@ elif [ -e "$CI_ENV_CONF_FILE" ]; then
 		fi
 	done
 
-	WHICH_CONF="codeigniter environment ($CI_ENV_CONF_FILE)"
+	WHICH_CONF="codeigniter environment"
 elif [ -e "$CONF_FILE" ]; then
 # Check for configuration file as fallback.
 	source "$CONF_FILE"
@@ -235,9 +270,13 @@ else
 fi
 
 # Now that we have complete config data, set locations of dump files.
-DATA_FILE="$DIR/$ENV-data.sql"
-SCHEMA_FILE="$DIR/$ENV-schema.sql"
-ROUTINES_FILE="$DIR/$ENV-routines.sql"
+FROM_DATA_FILE="$DIR/$ENV-data.sql"
+FROM_SCHEMA_FILE="$DIR/$ENV-schema.sql"
+FROM_ROUTINES_FILE="$DIR/$ENV-routines.sql"
+
+TO_DATA_FILE="$DIR/$ENV_TO-data.sql"
+TO_SCHEMA_FILE="$DIR/$ENV_TO-schema.sql"
+TO_ROUTINES_FILE="$DIR/$ENV_TO-routines.sql"
 
 
 ###########################################################
@@ -252,21 +291,38 @@ case $1 in
 		dump
 		;;
 	"wipe")
-		wipe
+		if [ "$ENV_TO" = "" ]; then
+			usage
+		else
+			wipe
+		fi
 		;;
 	"debug")
-		echo "HOST: $HOST"
-		echo "PORT: $PORT"
-		echo "USER: $USER"
-		echo "PASS: $PASS"
-		echo "DB: $DB"
-		echo "DATA_FILE: $DATA_FILE"
-		echo "SCHEMA_FILE: $SCHEMA_FILE"
-		echo "EEMASTERCONF_FILE: $EEMASTERCONF_FILE"
-		echo "CONF_FILE: $CONF_FILE"
-		echo "WHICH_CONF: $WHICH_CONF"
+		cat <<HEREDOC
+# Possible configuration paths:
+	EEMASTERCONF_FILE:	$EEMASTERCONF_FILE
+	CI_ENV_CONF_FILE:	$CI_ENV_CONF_FILE
+	CONF_FILE:			$CONF_FILE
+# Using configuration from $WHICH_CONF:
+	DB:		$DB
+	HOST:	$HOST
+	PORT:	$PORT
+	USER:	$USER
+	PASS:	$PASS
+# Data to be read from ($ENV):
+	FROM_DATA_FILE:		$FROM_DATA_FILE
+	FROM_SCHEMA_FILE:	$FROM_SCHEMA_FILE
+	FROM_ROUTINES_FILE:	$FROM_ROUTINES_FILE
+# Data to be saved to ($ENV_TO):
+	TO_DATA_FILE:		$TO_DATA_FILE
+	TO_SCHEMA_FILE:		$TO_SCHEMA_FILE
+	TO_ROUTINES_FILE:	$TO_ROUTINES_FILE
+HEREDOC
 		;;
 	*)
 		usage
 		;;
 esac
+
+# Exit with success code if we got to this point.
+exit 0
