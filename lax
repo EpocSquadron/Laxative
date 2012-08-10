@@ -270,10 +270,6 @@ check_mysql_db_connection() {
 	fi
 }
 
-check_mongo_db_conection() {
-	
-}
-
 ##########################################################
 ## Checks before we do any more                         ##
 ##########################################################
@@ -392,13 +388,13 @@ if [ -e "$CI_ENV_MONGO_CONF_FILE" ]; then
 fi
 
 # Now that we have complete config data, set locations of dump files.
-FROM_DATA_FILE="$DIR/$ENV-data.sql"
-FROM_SCHEMA_FILE="$DIR/$ENV-schema.sql"
-FROM_ROUTINES_FILE="$DIR/$ENV-routines.sql"
+FROM_DATA_FILE="$DIR/.sql/$ENV-data.sql"
+FROM_SCHEMA_FILE="$DIR/.sql/$ENV-schema.sql"
+FROM_ROUTINES_FILE="$DIR/.sql/$ENV-routines.sql"
 
-TO_DATA_FILE="$DIR/$ENV_TO-data.sql"
-TO_SCHEMA_FILE="$DIR/$ENV_TO-schema.sql"
-TO_ROUTINES_FILE="$DIR/$ENV_TO-routines.sql"
+TO_DATA_FILE="$DIR/.sql/$ENV_TO-data.sql"
+TO_SCHEMA_FILE="$DIR/.sql/$ENV_TO-schema.sql"
+TO_ROUTINES_FILE="$DIR/.sql/$ENV_TO-routines.sql"
 
 FROM_MONGO_DIR="$DIR/.mongo/$ENV"
 TO_MONGO_DIR="$DIR/.mongo/$ENV_TO"
