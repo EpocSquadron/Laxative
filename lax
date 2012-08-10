@@ -53,11 +53,15 @@ dump() {
 		local DUMP_DATA_FILE="$FROM_DATA_FILE"
 		local DUMP_ROUTINES_FILE="$FROM_ROUTINES_FILE"
 		local DUMP_TO="$ENV"
+
+		local DUMP_MONGO_TO="$FROM_MONGO_DIR"
 	else
 		local DUMP_SCHEMA_FILE="$TO_SCHEMA_FILE"
 		local DUMP_DATA_FILE="$TO_DATA_FILE"
 		local DUMP_ROUTINES_FILE="$TO_ROUTINES_FILE"
 		local DUMP_TO="$ENV_TO"
+
+		local DUMP_MONGO_TO="$TO_MONGO_DIR"
 	fi
 
 	# Create backup first.
@@ -72,7 +76,12 @@ dump() {
 	fi
 
 	# Do it.
-	do_dump "$DUMP_SCHEMA_FILE" "$DUMP_ROUTINES_FILE" "$DUMP_DATA_FILE"
+	do_mysql_dump "$DUMP_SCHEMA_FILE" "$DUMP_ROUTINES_FILE" "$DUMP_DATA_FILE"
+
+	# Do Mongo if credentials have been found
+	if [ "${MONGO}" ]; then
+		do_mongo_dump "$DUMP_MONGO_TO"
+	fi
 
 	echo "Database from environment $ENV dumped to files for environment $DUMP_TO."
 	exit 0
@@ -93,7 +102,7 @@ load() {
 	fi
 
 	# Backup the database about to be overwritten first.
-	do_dump "$FROM_SCHEMA_FILE.$BACKUP_FILE_EXTENSION" "$FROM_ROUTINES_FILE.$BACKUP_FILE_EXTENSION" "$FROM_DATA_FILE.$BACKUP_FILE_EXTENSION"
+	do_mysql_dump "$FROM_SCHEMA_FILE.$BACKUP_FILE_EXTENSION" "$FROM_ROUTINES_FILE.$BACKUP_FILE_EXTENSION" "$FROM_DATA_FILE.$BACKUP_FILE_EXTENSION"
 
 	# Update the database
 	if [ -e "$LOAD_SCHEMA_FILE" -a -e "$LOAD_DATA_FILE" -a -e "$LOAD_ROUTINES_FILE" ]; then
@@ -168,7 +177,7 @@ grab_php_config_value() {
 	/' "$1" | sed '/\/\*.*\*\//d;/\/\*/,/\*\//d;/^\ *$/d' | grep -Pio "(?<=$2['\"]\]\ \=\ ['\"])([^'\"]+)(?=['\"])"
 }
 
-do_dump() {
+do_mysql_dump() {
 	# # Create a dump of the database schema
 	# mysqldump \
 	## Connection to localhost
@@ -189,6 +198,9 @@ do_dump() {
 	# 	--no-data \
 	## Save db to schema.sql
 	# 	$DB >schema.sql
+
+	# create mysql dir if doesn't exist
+	mkdir -p .sql
 
 	mysqldump --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" --add-drop-table --skip-comments --create-options --default-character-set=utf8 --no-data "$DB" >"$1"
 
@@ -226,6 +238,14 @@ do_dump() {
 	# Create a dump of the actual data
 	mysqldump --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" --complete-insert --skip-comments --disable-keys --extended-insert --no-create-db --no-create-info --quick "$DB" | sed 's/),(/),\
 	(/g' >"$3"
+}
+
+do_mongo_dump() {
+	# create mongo directory if not exist
+	mkdir -p .mongo
+
+	# dump mongodb 
+	mongodump --host="$MONGO_HOST" --db="$MONGO_DB" --out="$1" --username="$MONGO_USER" --password="$MONGO_PASS"
 }
 
 check_mysql_db_connection() {
@@ -288,6 +308,7 @@ DB="$DEFAULT_DB"
 # Path to possible configuration files
 EEMASTERCONF_FILE="$DIR/../config/config.$ENV.php"
 CI_ENV_CONF_FILE="$DIR/../application/config/$ENV/database.php"
+CI_ENV_MONGO_CONF_FILE="$DIR/../application/config/$ENV/mongodb.php"
 CONF_FILE="$DIR/$ENV.conf"
 WHICH_CONF=""
 
@@ -335,6 +356,23 @@ else
 	echo >&2 "Configuration file does not exist."; exit 1;
 fi
 
+# Now for Mongo
+# See if mongodb configuration is in CI
+if [ -e "$CI_ENV_MONGO_CONF_FILE" ]; then
+# Check if CI env and then pull from that
+	MONGO_HOST=`grab_php_config_value $CI_ENV_MONGO_CONF_FILE mongo_hostbase`
+	MONGO_USER=`grab_php_config_value $CI_ENV_MONGO_CONF_FILE mongo_username`
+	MONGO_PASS=`grab_php_config_value $CI_ENV_MONGO_CONF_FILE mongo_password`
+	MONGO_DB=`grab_php_config_value $CI_ENV_MONGO_CONF_FILE mongo_database`
+
+	# we have all the mongo creds
+	if [[ "${MONGO_HOST}" && "${MONGO_USER}" && "${MONGO_PASS}" && "${MONGO_DB}" ]]; then
+		MONGO="true";
+	fi;
+
+	WHICH_MONGO_CONF="codeigniter environment ($CI_ENV_MONGO_CONF_FILE)"
+fi
+
 # Now that we have complete config data, set locations of dump files.
 FROM_DATA_FILE="$DIR/$ENV-data.sql"
 FROM_SCHEMA_FILE="$DIR/$ENV-schema.sql"
@@ -344,6 +382,8 @@ TO_DATA_FILE="$DIR/$ENV_TO-data.sql"
 TO_SCHEMA_FILE="$DIR/$ENV_TO-schema.sql"
 TO_ROUTINES_FILE="$DIR/$ENV_TO-routines.sql"
 
+FROM_MONGO_DIR="$DIR/.mongo/$ENV"
+TO_MONGO_DIR="$DIR/.mongo/$ENV_TO"
 
 ###########################################################
 ## Main logic.                                           ##
@@ -386,6 +426,12 @@ case $1 in
 	TO_SCHEMA_FILE:		$TO_SCHEMA_FILE
 	TO_ROUTINES_FILE:	$TO_ROUTINES_FILE
 HEREDOC
+if [ "${MONGO}" ]; then
+	MONGO DB:	$MONGO_DB
+	MONGO HOST:	$MONGO_HOST
+	MONGO USER:	$MONGO_USER
+	MONGO PASS:	$MONGO_PASS
+fi
 		;;
 	*)
 		usage
