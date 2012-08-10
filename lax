@@ -257,7 +257,7 @@ do_mongo_dump() {
 	mkdir -p .mongo
 
 	# dump mongodb 
-	mongodump --host="$MONGO_HOST" --db="$FROM_MONGO_DIR" --out="$1" --username="$MONGO_USER" --password="$MONGO_PASS"
+	mongodump --host="$MONGO_HOST" --db="$MONGO_DB" --out="$1" --username="$MONGO_USER" --password="$MONGO_PASS"
 }
 
 check_mysql_db_connection() {
