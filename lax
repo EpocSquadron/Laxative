@@ -94,11 +94,15 @@ load() {
 		local LOAD_DATA_FILE="$FROM_DATA_FILE"
 		local LOAD_ROUTINES_FILE="$FROM_ROUTINES_FILE"
 		local LOAD_FROM="$ENV"
+
+		local DUMP_MONGO_TO="$FROM_MONGO_DIR"
 	else
 		local LOAD_SCHEMA_FILE="$TO_SCHEMA_FILE"
 		local LOAD_DATA_FILE="$TO_DATA_FILE"
 		local LOAD_ROUTINES_FILE="$TO_ROUTINES_FILE"
 		local LOAD_FROM="$ENV_TO"
+
+		local DUMP_MONGO_TO="$TO_MONGO_DIR"
 	fi
 
 	# Backup the database about to be overwritten first.
@@ -114,6 +118,11 @@ load() {
 	else
 		echo >&2 "One or more of the schema, data, and routines files for environment $LOAD_FROM are missing."
 		exit 1
+	fi
+
+	# restore mongo db
+	if [ "${MONGO}" ]; then
+		mongorestore --host="$MONGO_HOST" --username="$MONGO_USER" --password="$MONGO_PASS" $DUMP_MONGO_TO
 	fi
 }
 
