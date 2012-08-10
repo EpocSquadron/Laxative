@@ -270,6 +270,14 @@ check_mysql_db_connection() {
 	fi
 }
 
+check_mongo_db_connection() {
+	local TEST=`mongo "$MONGO_HOST"/"$MONGO_DB" --username "$MONGO_USER" --password "$MONGO_PASS" --quiet --eval "db"`
+	if [ "$TEST" != "$MONGO_DB" ]; then
+		echo >&2 "Unable to connect to $ENV's MongoDB."
+		exit 1
+	fi
+}
+
 ##########################################################
 ## Checks before we do any more                         ##
 ##########################################################
@@ -412,10 +420,16 @@ TO_MONGO_DIR="$DIR/.mongo/$ENV_TO"
 case $1 in
 	"load")
 		check_mysql_db_connection
+		if [ "${MONGO}" ]; then
+			check_mongo_db_connection
+		fi
 		load
 		;;
 	"dump")
 		check_mysql_db_connection
+		if [ "${MONGO}" ]; then
+			check_mongo_db_connection
+		fi
 		dump
 		;;
 	"wipe")
