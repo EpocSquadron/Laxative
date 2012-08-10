@@ -323,7 +323,8 @@ DB="$DEFAULT_DB"
 EEMASTERCONF_FILE="$DIR/../config/config.$ENV.php"
 CI_ENV_CONF_FILE="$DIR/../application/config/$ENV/database.php"
 CI_ENV_MONGO_CONF_FILE="$DIR/../application/config/$ENV/mongodb.php"
-CONF_FILE="$DIR/$ENV.conf"
+CONF_FILE="$DIR/$ENV.mysql.conf"
+MONGO_CONF_FILE="$DIR/$ENV.mongo.conf"
 WHICH_CONF=""
 
 ## Grab configuration
@@ -379,13 +380,18 @@ if [ -e "$CI_ENV_MONGO_CONF_FILE" ]; then
 	MONGO_PASS=`grab_php_config_value $CI_ENV_MONGO_CONF_FILE mongo_password`
 	MONGO_DB=`grab_php_config_value $CI_ENV_MONGO_CONF_FILE mongo_database`
 
-	# we have all the mongo creds
-	if [[ "${MONGO_HOST}" && "${MONGO_USER}" && "${MONGO_PASS}" && "${MONGO_DB}" ]]; then
-		MONGO="true";
-	fi;
-
 	WHICH_MONGO_CONF="codeigniter environment ($CI_ENV_MONGO_CONF_FILE)"
+
+# Check for configuration file as fallback.
+elif [ -e "$MONGO_CONF_FILE" ]; then
+	source "$MONGO_CONF_FILE"
+	WHICH_CONF="lax mongo conf file ($MONGO_CONF_FILE)"
 fi
+
+# we have all the mongo creds
+if [[ "${MONGO_HOST}" && "${MONGO_USER}" && "${MONGO_PASS}" && "${MONGO_DB}" ]]; then
+	MONGO="true";
+fi;
 
 # Now that we have complete config data, set locations of dump files.
 FROM_DATA_FILE="$DIR/.sql/$ENV-data.sql"
