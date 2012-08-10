@@ -95,14 +95,14 @@ load() {
 		local LOAD_ROUTINES_FILE="$FROM_ROUTINES_FILE"
 		local LOAD_FROM="$ENV"
 
-		local DUMP_MONGO_TO="$FROM_MONGO_DIR"
+		local LOAD_MONGO_FROM="$FROM_MONGO_DIR"
 	else
 		local LOAD_SCHEMA_FILE="$TO_SCHEMA_FILE"
 		local LOAD_DATA_FILE="$TO_DATA_FILE"
 		local LOAD_ROUTINES_FILE="$TO_ROUTINES_FILE"
 		local LOAD_FROM="$ENV_TO"
 
-		local DUMP_MONGO_TO="$TO_MONGO_DIR"
+		local LOAD_MONGO_FROM="$TO_MONGO_DIR"
 	fi
 
 	# Backup the database about to be overwritten first.
@@ -122,7 +122,7 @@ load() {
 
 	# restore mongo db
 	if [ "${MONGO}" ]; then
-		mongorestore --host="$MONGO_HOST" --username="$MONGO_USER" --password="$MONGO_PASS" $DUMP_MONGO_TO
+		mongorestore --host="$MONGO_HOST" --username="$MONGO_USER" --password="$MONGO_PASS" $LOAD_MONGO_FROM
 	fi
 }
 
@@ -143,6 +143,9 @@ wipe() {
 	cp -f "$FROM_SCHEMA_FILE" "$TO_SCHEMA_FILE"
 	cp -f "$FROM_DATA_FILE" "$TO_DATA_FILE"
 	cp -f "$FROM_ROUTINES_FILE" "$TO_ROUTINES_FILE"
+
+	# Overwrite Mongo
+	cp -f -r "$FROM_MONGO_DIR" "$TO_MONGO_DIR"
 
 	echo "Environment $ENV's dumps copied to environment $ENV_TO's dumps."
 	exit 0
@@ -254,7 +257,7 @@ do_mongo_dump() {
 	mkdir -p .mongo
 
 	# dump mongodb 
-	mongodump --host="$MONGO_HOST" --db="$MONGO_DB" --out="$1" --username="$MONGO_USER" --password="$MONGO_PASS"
+	mongodump --host="$MONGO_HOST" --db="$FROM_MONGO_DIR" --out="$1" --username="$MONGO_USER" --password="$MONGO_PASS"
 }
 
 check_mysql_db_connection() {
