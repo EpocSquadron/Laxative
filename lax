@@ -179,7 +179,7 @@ grab_php_config_value() {
 	#	/\/\*/,/\*\//d
 	## Strip empty lines
 	#	/^\ *$/d
-	## Extract variable with grep
+	## Extract variable with perl
 	## Lookbehind, but dont match for $1'] = '
 	#	(?<=$1\'\]\ \=\ \')
 	## Match anything that isn't the closing single quote
@@ -188,7 +188,7 @@ grab_php_config_value() {
 	#	(?=\')
 	sed 's/\/\/.*$//;s/#.*//;s/\/\*/\
 	&/;s/\*\//&\
-	/' "$1" | sed '/\/\*.*\*\//d;/\/\*/,/\*\//d;/^\ *$/d' | grep -Pio "(?<=$2['\"]\]\ \=\ ['\"])([^'\"]+)(?=['\"])"
+	/' "$1" | sed '/\/\*.*\*\//d;/\/\*/,/\*\//d;/^\ *$/d' | perl -lne "print \$1 if /(?<=$2['\"]\]\ \=\ ['\"])([^'\"]+)(?=['\"])/i"
 }
 
 do_mysql_dump() {
