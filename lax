@@ -216,7 +216,7 @@ do_mysql_dump() {
 	# create mysql dir if doesn't exist
 	mkdir -p .sql
 
-	mysqldump --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" --add-drop-table --skip-comments --create-options --default-character-set=utf8 --no-data "$DB" >"$1"
+	mysqldump --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" --add-drop-table --skip-comments --create-options --default-character-set=utf8 --no-data "$DB" | sed '/^\/\*\!50013/d' >"$1"
 
 	# # Create a dump of the routines (functions & procedures) only.
 	#
@@ -258,12 +258,12 @@ do_mongo_dump() {
 	# create mongo directory if not exist
 	mkdir -p .mongo
 
-	# dump mongodb 
+	# dump mongodb
 	mongodump --host="$MONGO_HOST" --db="$MONGO_DB" --out="$1" --username="$MONGO_USER" --password="$MONGO_PASS"
 }
 
 check_mysql_db_connection() {
-	local TEST=`mysql --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" -e "SHOW DATABASES;" | grep -i "$DB"`
+	local TEST=`mysql --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" -e "SHOW DATABASES;" | grep -iw "$DB"`
 	if [ "$TEST" != "$DB" ]; then
 		echo >&2 "Unable to connect to $ENV's database."
 		exit 1
@@ -460,12 +460,12 @@ case $1 in
 	TO_SCHEMA_FILE:		$TO_SCHEMA_FILE
 	TO_ROUTINES_FILE:	$TO_ROUTINES_FILE
 HEREDOC
-if [ "${MONGO}" ]; then
-	MONGO DB:	$MONGO_DB
-	MONGO HOST:	$MONGO_HOST
-	MONGO USER:	$MONGO_USER
-	MONGO PASS:	$MONGO_PASS
-fi
+		if [ "${MONGO}" ]; then
+			echo "MONGO DB:	$MONGO_DB"
+			echo "MONGO HOST:	$MONGO_HOST"
+			echo "MONGO USER:	$MONGO_USER"
+			echo "MONGO PASS:	$MONGO_PASS"
+		fi
 		;;
 	*)
 		usage
