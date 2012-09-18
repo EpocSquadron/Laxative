@@ -67,12 +67,15 @@ dump() {
 	# Create backup first.
 	if [ -f "$DUMP_SCHEMA_FILE" ]; then
 		mv "$DUMP_SCHEMA_FILE" "$DUMP_SCHEMA_FILE.$BACKUP_FILE_EXTENSION"
+		echo "Previous $DUMP_SCHEMA_FILE backed up to $DUMP_SCHEMA_FILE.$BACKUP_FILE_EXTENSION"
 	fi
 	if [ -f "$DUMP_ROUTINES_FILE" ]; then
 		mv "$DUMP_ROUTINES_FILE" "$DUMP_ROUTINES_FILE.$BACKUP_FILE_EXTENSION"
+		echo "Previous $DUMP_ROUTINES_FILE backed up to $DUMP_ROUTINES_FILE.$BACKUP_FILE_EXTENSION"
 	fi
 	if [ -f "$DUMP_DATA_FILE" ]; then
 		mv "$DUMP_DATA_FILE" "$DUMP_DATA_FILE.$BACKUP_FILE_EXTENSION"
+		echo "Previous $DUMP_DATA_FILE backed up to $DUMP_DATA_FILE.$BACKUP_FILE_EXTENSION"
 	fi
 
 	# Do it.
@@ -107,6 +110,7 @@ load() {
 
 	# Backup the database about to be overwritten first.
 	do_mysql_dump "$FROM_SCHEMA_FILE.$BACKUP_FILE_EXTENSION" "$FROM_ROUTINES_FILE.$BACKUP_FILE_EXTENSION" "$FROM_DATA_FILE.$BACKUP_FILE_EXTENSION"
+	echo "Current $ENV database backed up to $FROM_SCHEMA_FILE.$BACKUP_FILE_EXTENSION, $FROM_DATA_FILE.$BACKUP_FILE_EXTENSION and $FROM_ROUTINES_FILE.$BACKUP_FILE_EXTENSION"
 
 	# Update the database
 	if [ -e "$LOAD_SCHEMA_FILE" -a -e "$LOAD_DATA_FILE" -a -e "$LOAD_ROUTINES_FILE" ]; then
@@ -131,12 +135,15 @@ wipe() {
 	# Create backup first.
 	if [ -f "$TO_SCHEMA_FILE" ]; then
 		mv "$TO_SCHEMA_FILE" "$TO_SCHEMA_FILE.$BACKUP_FILE_EXTENSION"
+		echo "Previous $TO_SCHEMA_FILE backed up to $TO_SCHEMA_FILE.$BACKUP_FILE_EXTENSION"
 	fi
 	if [ -f "$TO_ROUTINES_FILE" ]; then
 		mv "$TO_ROUTINES_FILE" "$TO_ROUTINES_FILE.$BACKUP_FILE_EXTENSION"
+		echo "Previous $TO_ROUTINES_FILE backed up to $TO_ROUTINES_FILE.$BACKUP_FILE_EXTENSION"
 	fi
 	if [ -f "$TO_DATA_FILE" ]; then
 		mv "$TO_DATA_FILE" "$TO_DATA_FILE.$BACKUP_FILE_EXTENSION"
+		echo "Previous $TO_DATA_FILE backed up to $TO_DATA_FILE.$BACKUP_FILE_EXTENSION"
 	fi
 
 	# Overwrite.
