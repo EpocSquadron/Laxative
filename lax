@@ -160,6 +160,14 @@ wipe() {
 	exit 0
 }
 
+drop() {
+	# Backup the database about to be blown away first.
+	do_mysql_dump "$FROM_SCHEMA_FILE.$BACKUP_FILE_EXTENSION" "$FROM_ROUTINES_FILE.$BACKUP_FILE_EXTENSION" "$FROM_DATA_FILE.$BACKUP_FILE_EXTENSION"
+	echo "Current $ENV database backed up to $FROM_SCHEMA_FILE.$BACKUP_FILE_EXTENSION, $FROM_DATA_FILE.$BACKUP_FILE_EXTENSION and $FROM_ROUTINES_FILE.$BACKUP_FILE_EXTENSION"
+
+	do_mysql_drop
+}
+
 ##########################################################
 ## Define helper funcitons                              ##
 ##########################################################
@@ -259,6 +267,16 @@ do_mysql_dump() {
 	# Create a dump of the actual data
 	mysqldump --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" --complete-insert --skip-comments --disable-keys --extended-insert --no-create-db --no-create-info --quick "$DB" | sed 's/),(/),\
 	(/g' >"$3"
+}
+
+do_mysql_drop() {
+
+	local TABLES=$(mysql --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" "$DB" -e 'show tables' | awk '{ print $1}' | grep -v '^Tables' )
+
+	for TABLE in $TABLES; do
+		echo "Dropped table $TABLE from database $DB."
+		mysql --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" "$DB" -e "SET foreign_key_checks = FALSE; DROP TABLE $TABLE"
+	done
 }
 
 do_mongo_dump() {
@@ -445,6 +463,10 @@ case $1 in
 		else
 			wipe
 		fi
+		;;
+	"drop")
+		check_mysql_db_connection
+		drop
 		;;
 	"debug")
 		cat <<HEREDOC
