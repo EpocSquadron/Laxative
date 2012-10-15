@@ -229,7 +229,9 @@ do_mysql_dump() {
 	# 	$DB >schema.sql
 
 	# create mysql dir if doesn't exist
-	mkdir -p .sql
+	if [ ! -d "$DIR/sql" ]; then
+		mkdir "$DIR/sql"
+	fi
 
 	mysqldump --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" --add-drop-table --skip-comments --create-options --default-character-set=utf8 --no-data "$DB" | sed '/^\/\*\!50013/d' >"$1"
 
@@ -281,7 +283,9 @@ do_mysql_drop() {
 
 do_mongo_dump() {
 	# create mongo directory if not exist
-	mkdir -p .mongo
+	if [ ! -d "$DIR/mongo" ]; then
+		mkdir "$DIR/mongo"
+	fi
 
 	# dump mongodb
 	mongodump --host="$MONGO_HOST" --db="$MONGO_DB" --out="$1" --username="$MONGO_USER" --password="$MONGO_PASS"
@@ -427,16 +431,16 @@ if [[ "${MONGO_HOST}" && "${MONGO_USER}" && "${MONGO_PASS}" && "${MONGO_DB}" ]];
 fi;
 
 # Now that we have complete config data, set locations of dump files.
-FROM_DATA_FILE="$DIR/.sql/$ENV-data.sql"
-FROM_SCHEMA_FILE="$DIR/.sql/$ENV-schema.sql"
-FROM_ROUTINES_FILE="$DIR/.sql/$ENV-routines.sql"
+FROM_DATA_FILE="$DIR/sql/$ENV-data.sql"
+FROM_SCHEMA_FILE="$DIR/sql/$ENV-schema.sql"
+FROM_ROUTINES_FILE="$DIR/sql/$ENV-routines.sql"
 
-TO_DATA_FILE="$DIR/.sql/$ENV_TO-data.sql"
-TO_SCHEMA_FILE="$DIR/.sql/$ENV_TO-schema.sql"
-TO_ROUTINES_FILE="$DIR/.sql/$ENV_TO-routines.sql"
+TO_DATA_FILE="$DIR/sql/$ENV_TO-data.sql"
+TO_SCHEMA_FILE="$DIR/sql/$ENV_TO-schema.sql"
+TO_ROUTINES_FILE="$DIR/sql/$ENV_TO-routines.sql"
 
-FROM_MONGO_DIR="$DIR/.mongo/$ENV"
-TO_MONGO_DIR="$DIR/.mongo/$ENV_TO"
+FROM_MONGO_DIR="$DIR/mongo/$ENV"
+TO_MONGO_DIR="$DIR/mongo/$ENV_TO"
 
 ###########################################################
 ## Main logic.                                           ##
