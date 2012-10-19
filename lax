@@ -14,6 +14,9 @@
 
 BACKUP_FILE_EXTENSION="bak"
 
+# Find location of this script so we can save output to correct directory
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
 ##########################################################
 ## Define commands                                      ##
 ##########################################################
@@ -307,173 +310,11 @@ check_mongo_db_connection() {
 	fi
 }
 
-##########################################################
-## Checks before we do any more                         ##
-##########################################################
-
-# Check for existence/accessibility of mysql and sed
-hash mysql 2>&- || { echo >&2 "Mysql is required but is either not installed or not in your PATH.  Aborting."; exit 1; }
-hash mysqldump 2>&- || { echo >&2 "The mysqldump utility is required but is either not installed or not in your PATH.  Aborting."; exit 1; }
-hash sed 2>&- || { echo >&2 "The sed utility is required but is either not installed or not in your PATH.  Aborting."; exit 1; }
-
-# Check that user is asking for an action
-if [ ! $1 ]; then
-	usage
-  	exit;
-fi
-
-###########################################################
-## Set global variables and grab configuration           ##
-###########################################################
-
-# Find location of this script so we can save output to correct directory
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
-# Check that user supplied an env -- falback to local
-if [ ! $2 ]; then
-	usage
-else
-	ENV="$2"
-fi
-
-# Check for optional third argument
-if [ ! $3 ]; then
-	ENV_TO=""
-else
-	ENV_TO="$3"
-fi
-
-# Set defaults to prevent nonexistence errors.
-DEFAULT_HOST="localhost"
-DEFAULT_PORT="3306"
-DEFAULT_USER="root"
-DEFAULT_PASS="root"
-DEFAULT_DB="test"
-
-HOST="$DEFAULT_HOST"
-PORT="$DEFAULT_PORT"
-USER="$DEFAULT_USER"
-PASS="$DEFAULT_PASS"
-DB="$DEFAULT_DB"
-
-# Path to possible configuration files
-EEMASTERCONF_FILE="$DIR/../config/config.$ENV.php"
-CI_ENV_CONF_FILE="$DIR/../application/config/$ENV/database.php"
-CI_ENV_MONGO_CONF_FILE="$DIR/../application/config/$ENV/mongodb.php"
-CONF_FILE="$DIR/$ENV.mysql.conf"
-MONGO_CONF_FILE="$DIR/$ENV.mongo.conf"
-WHICH_CONF=""
-
-## Grab configuration
-if [ -e "$EEMASTERCONF_FILE" ]; then
-# Check if ee-master-config exists for this env, then pull form that
-	HOST=`grab_php_config_value $EEMASTERCONF_FILE hostname`
-	PORT=`grab_php_config_value $EEMASTERCONF_FILE port`
-	USER=`grab_php_config_value $EEMASTERCONF_FILE username`
-	PASS=`grab_php_config_value $EEMASTERCONF_FILE password`
-	DB=`grab_php_config_value $EEMASTERCONF_FILE database`
-
-	# If any of them are now empty, replace with default value
-	for VAR in HOST PORT USER PASS DB; do
-		if [ "${!VAR}" = "" ]; then
-			TMP="DEFAULT_$VAR"
-			eval $VAR="${!TMP}"
-		fi
-	done
-
-	WHICH_CONF="ee-master-config"
-elif [ -e "$CI_ENV_CONF_FILE" ]; then
-# Check if ee-master-config exists for this env, then pull form that
-	HOST=`grab_php_config_value $CI_ENV_CONF_FILE hostname`
-	PORT=`grab_php_config_value $CI_ENV_CONF_FILE port`
-	USER=`grab_php_config_value $CI_ENV_CONF_FILE username`
-	PASS=`grab_php_config_value $CI_ENV_CONF_FILE password`
-	DB=`grab_php_config_value $CI_ENV_CONF_FILE database`
-
-	# If any of them are now empty, replace with default value
-	for VAR in HOST PORT USER PASS DB; do
-		if [ "${!VAR}" = "" ]; then
-			TMP="DEFAULT_$VAR"
-			eval $VAR="${!TMP}"
-		fi
-	done
-
-	WHICH_CONF="codeigniter environment"
-elif [ -e "$CONF_FILE" ]; then
-# Check for configuration file as fallback.
-	source "$CONF_FILE"
-	WHICH_CONF="lax conf file ($CONF_FILE)"
-else
-# Error out.
-	echo >&2 "Configuration file does not exist."; exit 1;
-fi
-
-# Now for Mongo
-# See if mongodb configuration is in CI
-if [ -e "$CI_ENV_MONGO_CONF_FILE" ]; then
-# Check if CI env and then pull from that
-	MONGO_HOST=`grab_php_config_value $CI_ENV_MONGO_CONF_FILE mongo_hostbase`
-	MONGO_USER=`grab_php_config_value $CI_ENV_MONGO_CONF_FILE mongo_username`
-	MONGO_PASS=`grab_php_config_value $CI_ENV_MONGO_CONF_FILE mongo_password`
-	MONGO_DB=`grab_php_config_value $CI_ENV_MONGO_CONF_FILE mongo_database`
-
-	WHICH_MONGO_CONF="codeigniter environment ($CI_ENV_MONGO_CONF_FILE)"
-
-# Check for configuration file as fallback.
-elif [ -e "$MONGO_CONF_FILE" ]; then
-	source "$MONGO_CONF_FILE"
-	WHICH_CONF="lax mongo conf file ($MONGO_CONF_FILE)"
-fi
-
-# we have all the mongo creds
-if [[ "${MONGO_HOST}" && "${MONGO_USER}" && "${MONGO_PASS}" && "${MONGO_DB}" ]]; then
-	MONGO="true";
-fi;
-
-# Now that we have complete config data, set locations of dump files.
-FROM_DATA_FILE="$DIR/sql/$ENV-data.sql"
-FROM_SCHEMA_FILE="$DIR/sql/$ENV-schema.sql"
-FROM_ROUTINES_FILE="$DIR/sql/$ENV-routines.sql"
-
-TO_DATA_FILE="$DIR/sql/$ENV_TO-data.sql"
-TO_SCHEMA_FILE="$DIR/sql/$ENV_TO-schema.sql"
-TO_ROUTINES_FILE="$DIR/sql/$ENV_TO-routines.sql"
-
-FROM_MONGO_DIR="$DIR/mongo/$ENV"
-TO_MONGO_DIR="$DIR/mongo/$ENV_TO"
-
-###########################################################
-## Main logic.                                           ##
-###########################################################
-
-case $1 in
-	"load")
-		check_mysql_db_connection
-		if [ "${MONGO}" ]; then
-			check_mongo_db_connection
-		fi
-		load
-		;;
-	"dump")
-		check_mysql_db_connection
-		if [ "${MONGO}" ]; then
-			check_mongo_db_connection
-		fi
-		dump
-		;;
-	"wipe")
-		if [ "$ENV_TO" = "" ]; then
-			usage
-		else
-			wipe
-		fi
-		;;
-	"drop")
-		check_mysql_db_connection
-		drop
-		;;
-	"debug")
-		cat <<HEREDOC
+##
+# Function to display debugging information
+#
+function debug {
+	cat <<HEREDOC
 # Possible configuration paths:
 	EEMASTERCONF_FILE:	$EEMASTERCONF_FILE
 	CI_ENV_CONF_FILE:	$CI_ENV_CONF_FILE
@@ -493,17 +334,255 @@ case $1 in
 	TO_SCHEMA_FILE:		$TO_SCHEMA_FILE
 	TO_ROUTINES_FILE:	$TO_ROUTINES_FILE
 HEREDOC
-		if [ "${MONGO}" ]; then
-			echo "MONGO DB:	$MONGO_DB"
-			echo "MONGO HOST:	$MONGO_HOST"
-			echo "MONGO USER:	$MONGO_USER"
-			echo "MONGO PASS:	$MONGO_PASS"
-		fi
-		;;
-	*)
-		usage
-		;;
-esac
+}
 
-# Exit with success code if we got to this point.
-exit 0
+##
+# Function to check for dependencies.
+#
+function compatibility_check {
+	# Check for existence/accessibility of mysql and sed
+	hash mysql 2>&- || { echo >&2 "Mysql is required but is either not installed or not in your PATH.  Aborting."; exit 1; }
+	hash mysqldump 2>&- || { echo >&2 "The mysqldump utility is required but is either not installed or not in your PATH.  Aborting."; exit 1; }
+	hash sed 2>&- || { echo >&2 "The sed utility is required but is either not installed or not in your PATH.  Aborting."; exit 1; }
+}
+
+##
+# The meat and potatoes
+#
+# $1 - Subcommand
+# $2 - Home environment
+# $3 - Remote environment
+function main {
+	local subcommand=$1; shift
+	local home_environment=$1; shift
+	local remote_environment=$1; shift
+
+	# Checks before we do any more
+	compatibility_check()
+
+	# Check that user is asking for an action and supplying an env.
+	if [[ $subcommand == '' || $home_environment == '' ]]; then
+		usage
+	fi
+
+	# Associative arrays for each db config.
+	local -A mysql_config
+	mysql_config=(
+		[host]="localhost"
+		[port]="3306"
+		[user]="root"
+		[pass]="root"
+		[db]="test"
+	)
+
+	# Path to possible configuration files
+	local -a mysql_config_files
+	mysql_config_files=(
+		[eemasterconf_file]="$DIR/../config/config.$home_environment.php"
+		[ci_env_conf_file]="$DIR/../application/config/$home_environment/database.php"
+		[conf_file]="$DIR/$home_environment.mysql.conf"
+	)
+
+	local -a mongo_config_files
+	mongo_config_files=(
+		[ci_env_mongo_conf_file]="$DIR/../application/config/$home_environment/mongodb.php"
+		[mongo_conf_file]="$DIR/$home_environment.mongo.conf"
+	)
+
+	## Grab configuration
+	if [ -e "$eemasterconf_file" ]; then
+	# Check if ee-master-config exists for this env, then pull from that
+		HOST=`grab_php_config_value $eemasterconf_file hostname`
+		PORT=`grab_php_config_value $eemasterconf_file port`
+		USER=`grab_php_config_value $eemasterconf_file username`
+		PASS=`grab_php_config_value $eemasterconf_file password`
+		DB=`grab_php_config_value $eemasterconf_file database`
+
+		# If any of them are now empty, replace with default value
+		for VAR in "${mysql_config[@]}"; do
+			if [ "${!VAR}" = "" ]; then
+				TMP="DEFAULT_$VAR"
+				eval $VAR="${!TMP}"
+			fi
+		done
+
+		WHICH_CONF="ee-master-config"
+	elif [ -e "$ci_env_conf_file" ]; then
+	# Check if ee-master-config exists for this env, then pull form that
+		HOST=`grab_php_config_value $ci_env_conf_file hostname`
+		PORT=`grab_php_config_value $ci_env_conf_file port`
+		USER=`grab_php_config_value $ci_env_conf_file username`
+		PASS=`grab_php_config_value $ci_env_conf_file password`
+		DB=`grab_php_config_value $ci_env_conf_file database`
+
+		# If any of them are now empty, replace with default value
+		for VAR in HOST PORT USER PASS DB; do
+			if [ "${!VAR}" = "" ]; then
+				TMP="DEFAULT_$VAR"
+				eval $VAR="${!TMP}"
+			fi
+		done
+
+		WHICH_CONF="codeigniter environment"
+	elif [ -e "$CONF_FILE" ]; then
+	# Check for configuration file as fallback.
+		source "$CONF_FILE"
+		WHICH_CONF="lax conf file ($CONF_FILE)"
+	else
+	# Error out.
+		echo >&2 "Configuration file does not exist."; exit 1;
+	fi
+
+	###########################################################
+	## Set global variables and grab configuration           ##
+	###########################################################
+
+	# Set defaults to prevent nonexistence errors.
+	DEFAULT_HOST="localhost"
+	DEFAULT_PORT="3306"
+	DEFAULT_USER="root"
+	DEFAULT_PASS="root"
+	DEFAULT_DB="test"
+
+	HOST="$DEFAULT_HOST"
+	PORT="$DEFAULT_PORT"
+	USER="$DEFAULT_USER"
+	PASS="$DEFAULT_PASS"
+	DB="$DEFAULT_DB"
+
+	# Path to possible configuration files
+	EEMASTERCONF_FILE="$DIR/../config/config.$ENV.php"
+	CI_ENV_CONF_FILE="$DIR/../application/config/$ENV/database.php"
+	CI_ENV_MONGO_CONF_FILE="$DIR/../application/config/$ENV/mongodb.php"
+	CONF_FILE="$DIR/$ENV.mysql.conf"
+	MONGO_CONF_FILE="$DIR/$ENV.mongo.conf"
+	WHICH_CONF=""
+
+	## Grab configuration
+	if [ -e "$EEMASTERCONF_FILE" ]; then
+	# Check if ee-master-config exists for this env, then pull from that
+		HOST=`grab_php_config_value $EEMASTERCONF_FILE hostname`
+		PORT=`grab_php_config_value $EEMASTERCONF_FILE port`
+		USER=`grab_php_config_value $EEMASTERCONF_FILE username`
+		PASS=`grab_php_config_value $EEMASTERCONF_FILE password`
+		DB=`grab_php_config_value $EEMASTERCONF_FILE database`
+
+		# If any of them are now empty, replace with default value
+		for VAR in HOST PORT USER PASS DB; do
+			if [ "${!VAR}" = "" ]; then
+				TMP="DEFAULT_$VAR"
+				eval $VAR="${!TMP}"
+			fi
+		done
+
+		WHICH_CONF="ee-master-config"
+	elif [ -e "$CI_ENV_CONF_FILE" ]; then
+	# Check if ee-master-config exists for this env, then pull form that
+		HOST=`grab_php_config_value $CI_ENV_CONF_FILE hostname`
+		PORT=`grab_php_config_value $CI_ENV_CONF_FILE port`
+		USER=`grab_php_config_value $CI_ENV_CONF_FILE username`
+		PASS=`grab_php_config_value $CI_ENV_CONF_FILE password`
+		DB=`grab_php_config_value $CI_ENV_CONF_FILE database`
+
+		# If any of them are now empty, replace with default value
+		for VAR in HOST PORT USER PASS DB; do
+			if [ "${!VAR}" = "" ]; then
+				TMP="DEFAULT_$VAR"
+				eval $VAR="${!TMP}"
+			fi
+		done
+
+		WHICH_CONF="codeigniter environment"
+	elif [ -e "$CONF_FILE" ]; then
+	# Check for configuration file as fallback.
+		source "$CONF_FILE"
+		WHICH_CONF="lax conf file ($CONF_FILE)"
+	else
+	# Error out.
+		echo >&2 "Configuration file does not exist."; exit 1;
+	fi
+
+	# Now for Mongo
+	# See if mongodb configuration is in CI
+	if [ -e "$CI_ENV_MONGO_CONF_FILE" ]; then
+	# Check if CI env and then pull from that
+		MONGO_HOST=`grab_php_config_value $CI_ENV_MONGO_CONF_FILE mongo_hostbase`
+		MONGO_USER=`grab_php_config_value $CI_ENV_MONGO_CONF_FILE mongo_username`
+		MONGO_PASS=`grab_php_config_value $CI_ENV_MONGO_CONF_FILE mongo_password`
+		MONGO_DB=`grab_php_config_value $CI_ENV_MONGO_CONF_FILE mongo_database`
+
+		WHICH_MONGO_CONF="codeigniter environment ($CI_ENV_MONGO_CONF_FILE)"
+
+	# Check for configuration file as fallback.
+	elif [ -e "$MONGO_CONF_FILE" ]; then
+		source "$MONGO_CONF_FILE"
+		WHICH_CONF="lax mongo conf file ($MONGO_CONF_FILE)"
+	fi
+
+	# we have all the mongo creds
+	if [[ "${MONGO_HOST}" && "${MONGO_USER}" && "${MONGO_PASS}" && "${MONGO_DB}" ]]; then
+		MONGO="true";
+	fi;
+
+	# Now that we have complete config data, set locations of dump files.
+	FROM_DATA_FILE="$DIR/sql/$ENV-data.sql"
+	FROM_SCHEMA_FILE="$DIR/sql/$ENV-schema.sql"
+	FROM_ROUTINES_FILE="$DIR/sql/$ENV-routines.sql"
+
+	TO_DATA_FILE="$DIR/sql/$ENV_TO-data.sql"
+	TO_SCHEMA_FILE="$DIR/sql/$ENV_TO-schema.sql"
+	TO_ROUTINES_FILE="$DIR/sql/$ENV_TO-routines.sql"
+
+	FROM_MONGO_DIR="$DIR/mongo/$ENV"
+	TO_MONGO_DIR="$DIR/mongo/$ENV_TO"
+
+	###########################################################
+	## Main logic.                                           ##
+	###########################################################
+
+	case $1 in
+		"load")
+			check_mysql_db_connection
+			if [ "${MONGO}" ]; then
+				check_mongo_db_connection
+			fi
+			load
+			;;
+		"dump")
+			check_mysql_db_connection
+			if [ "${MONGO}" ]; then
+				check_mongo_db_connection
+			fi
+			dump
+			;;
+		"wipe")
+			if [ "$ENV_TO" = "" ]; then
+				usage
+			else
+				wipe
+			fi
+			;;
+		"drop")
+			check_mysql_db_connection
+			drop
+			;;
+		"debug")
+			debug
+			if [ "${MONGO}" ]; then
+				echo "MONGO DB:	$MONGO_DB"
+				echo "MONGO HOST:	$MONGO_HOST"
+				echo "MONGO USER:	$MONGO_USER"
+				echo "MONGO PASS:	$MONGO_PASS"
+			fi
+			;;
+		*)
+			usage
+			;;
+	esac
+
+	# Exit with success code if we got to this point.
+	exit 0
+
+}
+
+main $*
