@@ -292,7 +292,7 @@ do_mongo_dump() {
 }
 
 check_mysql_db_connection() {
-	local TEST=`mysql --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" -e "SHOW DATABASES;" | grep -iw "$DB"`
+	local TEST=`mysql --host="$HOST" --port="$PORT" --user="$USER" --password="$PASS" -e "SHOW DATABASES;" | grep -i "^$DB$"`
 	if [ "$TEST" != "$DB" ]; then
 		echo >&2 "Unable to connect to $ENV's database."
 		exit 1
